@@ -16,92 +16,45 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <stdint.h>
 #include <stdbool.h>
-#include "wait.h"
-#include "print.h"
-#include "debug.h"
-#include "util.h"
 #include "matrix.h"
-#include "timer.h"
 #include "quantum.h"
-
-//TODO: Rewrite the matrix code for the SPI GPIO expanders
-
-
-/* Set 0 if debouncing isn't needed */
-
-#ifndef DEBOUNCING_DELAY
-#   define DEBOUNCING_DELAY 5
-#endif
-
-#if (DEBOUNCING_DELAY > 0)
-    static uint16_t debouncing_time;
-    static bool debouncing = false;
-#endif
-
-#if (MATRIX_COLS <= 8)
-#    define print_matrix_header()  print("\nr/c 01234567\n")
-#    define print_matrix_row(row)  print_bin_reverse8(matrix_get_row(row))
-#    define matrix_bitpop(i)       bitpop(matrix[i])
-#    define ROW_SHIFTER ((uint8_t)1)
-#elif (MATRIX_COLS <= 16)
-#    define print_matrix_header()  print("\nr/c 0123456789ABCDEF\n")
-#    define print_matrix_row(row)  print_bin_reverse16(matrix_get_row(row))
-#    define matrix_bitpop(i)       bitpop16(matrix[i])
-#    define ROW_SHIFTER ((uint16_t)1)
-#elif (MATRIX_COLS <= 32)
-#    define print_matrix_header()  print("\nr/c 0123456789ABCDEF0123456789ABCDEF\n")
-#    define print_matrix_row(row)  print_bin_reverse32(matrix_get_row(row))
-#    define matrix_bitpop(i)       bitpop32(matrix[i])
-#    define ROW_SHIFTER  ((uint32_t)1)
-#endif
-
-#ifdef MATRIX_MASKED
-    extern const matrix_row_t matrix_mask[];
-#endif
-
-#if (DIODE_DIRECTION == ROW2COL) || (DIODE_DIRECTION == COL2ROW)
-static const pin_t row_pins[MATRIX_ROWS] = MATRIX_ROW_PINS;
-static const pin_t col_pins[MATRIX_COLS] = MATRIX_COL_PINS;
-#endif
 
 /* matrix state(1:on, 0:off) */
 static matrix_row_t matrix[MATRIX_ROWS];
 
-static matrix_row_t matrix_debouncing[MATRIX_ROWS];
+typedef enum {
+  L0,
+  L1,
+  L2,
+  R0,
+  R1,
+  R2
+} GPIOChip_t;
 
+// Forward declarations
+void spi_init(void);
+uint8_t spi_send(GPIOChip_t idx, uint8_t byte);
 
-#if (DIODE_DIRECTION == COL2ROW)
-    static void init_cols(void);
-    static bool read_cols_on_row(matrix_row_t current_matrix[], uint8_t current_row);
-    static void unselect_rows(void);
-    static void select_row(uint8_t row);
-    static void unselect_row(uint8_t row);
-#elif (DIODE_DIRECTION == ROW2COL)
-    static void init_rows(void);
-    static bool read_rows_on_col(matrix_row_t current_matrix[], uint8_t current_col);
-    static void unselect_cols(void);
-    static void unselect_col(uint8_t col);
-    static void select_col(uint8_t col);
-#endif
+// Define weak empty shells for these functions in case they don't get defined elsewhere
 
 __attribute__ ((weak))
 void matrix_init_quantum(void) {
-    matrix_init_kb();
+  matrix_init_kb();
 }
 
 __attribute__ ((weak))
 void matrix_scan_quantum(void) {
-    matrix_scan_kb();
+  matrix_scan_kb();
 }
 
 __attribute__ ((weak))
 void matrix_init_kb(void) {
-    matrix_init_user();
+  matrix_init_user();
 }
 
 __attribute__ ((weak))
 void matrix_scan_kb(void) {
-    matrix_scan_user();
+  matrix_scan_user();
 }
 
 __attribute__ ((weak))
@@ -112,280 +65,145 @@ __attribute__ ((weak))
 void matrix_scan_user(void) {
 }
 
+// Define matrix functions
+
 inline
 uint8_t matrix_rows(void) {
-    return MATRIX_ROWS;
+  return MATRIX_ROWS;
 }
 
 inline
 uint8_t matrix_cols(void) {
-    return MATRIX_COLS;
+  return MATRIX_COLS;
 }
 
-// void matrix_power_up(void) {
-// #if (DIODE_DIRECTION == COL2ROW)
-//     for (int8_t r = MATRIX_ROWS - 1; r >= 0; --r) {
-//         /* DDRxn */
-//         _SFR_IO8((row_pins[r] >> 4) + 1) |= _BV(row_pins[r] & 0xF);
-//         toggle_row(r);
-//     }
-//     for (int8_t c = MATRIX_COLS - 1; c >= 0; --c) {
-//         /* PORTxn */
-//         _SFR_IO8((col_pins[c] >> 4) + 2) |= _BV(col_pins[c] & 0xF);
-//     }
-// #elif (DIODE_DIRECTION == ROW2COL)
-//     for (int8_t c = MATRIX_COLS - 1; c >= 0; --c) {
-//         /* DDRxn */
-//         _SFR_IO8((col_pins[c] >> 4) + 1) |= _BV(col_pins[c] & 0xF);
-//         toggle_col(c);
-//     }
-//     for (int8_t r = MATRIX_ROWS - 1; r >= 0; --r) {
-//         /* PORTxn */
-//         _SFR_IO8((row_pins[r] >> 4) + 2) |= _BV(row_pins[r] & 0xF);
-//     }
-// #endif
-// }
+inline
+void matrix_setup(void) {
+}
 
+inline
+bool matrix_is_modified(void) {
+  return true;
+}
+
+inline
+bool matrix_is_on(uint8_t row, uint8_t col) {
+  return (matrix[row] & ((matrix_row_t)1<col));
+}
+
+inline
+matrix_row_t matrix_get_row(uint8_t row) {
+  return matrix[row];
+}
+
+inline
+void matrix_print(void) {
+}
+
+inline
+void matrix_power_up(void) {
+}
+
+inline
+void matrix_power_down(void) {
+}
+
+/**
+ * Initialize the matrix reading circuitry. Called once at the start
+ */
 void matrix_init(void) {
+  // initialize matrix state: all keys off
+  for (uint8_t i=0; i < MATRIX_ROWS; i++) {
+    matrix[i] = 0;
+  }
 
-    // initialize row and col
-#if (DIODE_DIRECTION == COL2ROW)
-    unselect_rows();
-    init_cols();
-#elif (DIODE_DIRECTION == ROW2COL)
-    unselect_cols();
-    init_rows();
-#endif
+  // Initialize SPI bus
+  spi_init();
 
-    // initialize matrix state: all keys off
-    for (uint8_t i=0; i < MATRIX_ROWS; i++) {
-        matrix[i] = 0;
-        matrix_debouncing[i] = 0;
-    }
+  // Initialize all GPIO expanders with SPI messages
 
-    matrix_init_quantum();
+  matrix_init_quantum();
 }
 
-uint8_t matrix_scan(void)
-{
-
-#if (DIODE_DIRECTION == COL2ROW)
-
-    // Set row, read cols
-    for (uint8_t current_row = 0; current_row < MATRIX_ROWS; current_row++) {
-#       if (DEBOUNCING_DELAY > 0)
-            bool matrix_changed = read_cols_on_row(matrix_debouncing, current_row);
-
-            if (matrix_changed) {
-                debouncing = true;
-                debouncing_time = timer_read();
-            }
-
-#       else
-            read_cols_on_row(matrix, current_row);
-#       endif
-
-    }
-
-#elif (DIODE_DIRECTION == ROW2COL)
-
-    // Set col, read rows
-    for (uint8_t current_col = 0; current_col < MATRIX_COLS; current_col++) {
-#       if (DEBOUNCING_DELAY > 0)
-            bool matrix_changed = read_rows_on_col(matrix_debouncing, current_col);
-            if (matrix_changed) {
-                debouncing = true;
-                debouncing_time = timer_read();
-            }
-#       else
-             read_rows_on_col(matrix, current_col);
-#       endif
-
-    }
-
-#endif
-
-#   if (DEBOUNCING_DELAY > 0)
-        if (debouncing && (timer_elapsed(debouncing_time) > DEBOUNCING_DELAY)) {
-            for (uint8_t i = 0; i < MATRIX_ROWS; i++) {
-                matrix[i] = matrix_debouncing[i];
-            }
-            debouncing = false;
-        }
-#   endif
-
-    matrix_scan_quantum();
-    return 1;
+/**
+ * Read the matrix. Called continuously
+ */
+uint8_t matrix_scan(void) {
+  matrix_scan_quantum();
+  return 1;
 }
 
-bool matrix_is_modified(void)
-{
-#if (DEBOUNCING_DELAY > 0)
-    if (debouncing) return false;
-#endif
-    return true;
+/**
+ * Initialize the SPI bus
+ */
+void spi_init(void) {
+  // Initialize !CS pins to inactive outputs (high)
+  DDRD |= (1<<6); // !CS_L0
+  DDRD |= (1<<7); // !CS_L1
+  DDRB |= (1<<4); // !CS_L2
+  DDRB |= (1<<5); // !CS_R0
+  DDRB |= (1<<6); // !CS_R1
+  DDRC |= (1<<6); // !CS_R2
+  PORTD |= (1<<6); // !CS_L0
+  PORTD |= (1<<7); // !CS_L1
+  PORTB |= (1<<4); // !CS_L2
+  PORTB |= (1<<5); // !CS_R0
+  PORTB |= (1<<6); // !CS_R1
+  PORTC |= (1<<6); // !CS_R2
+
+  // Disable power saving
+  PRR0 &= ~(1<<2); // PRSPI
+
+  // Initialize SPI pins
+  DDRB |= (1<<0); // SS
+  DDRB |= (1<<1); // SCK
+  DDRB |= (1<<2); // SDO
+  DDRB &= ~(1<<3); // SDI
+
+  // Initialize SPCR register
+  SPCR &= ~(1<<7); // SPIE (No interrupts)
+  SPCR &= ~(1<<5); // DORD (MSB first)
+  SPCR |= (1<<4); // MSTR (SPI Master)
+  SPCR &= ~(1<<3); // CPOL (Mode 0)
+  SPCR &= ~(1<<2); // CPHA (Mode 0)
+  SPCR &= ~(0b11<<0); // SCK Frequency (F_osc / 4)
+
+  // Enable SPI
+  SPCR |= (1<<6); // SPE
 }
 
-inline
-bool matrix_is_on(uint8_t row, uint8_t col)
-{
-    return (matrix[row] & ((matrix_row_t)1<col));
+/**
+ * Send a single byte on the SPI bus to the given GPIO chip, read the response
+ */
+uint8_t spi_send(GPIOChip_t idx, uint8_t byte) {
+  // Set !CS low
+  switch (idx) {
+    case L0: PORTD &= ~(1<<6); break;
+    case L1: PORTD &= ~(1<<7); break;
+    case L2: PORTB &= ~(1<<4); break;
+    case R0: PORTB &= ~(1<<5); break;
+    case R1: PORTB &= ~(1<<6); break;
+    case R2: PORTC &= ~(1<<6); break;
+  };
+
+  // Write byte to SPI register
+  SPDR = byte;
+
+  // Wait for transmission
+  while (!(SPSR & (1<<7)));
+
+  // Read response
+  uint8_t resp = SPDR;
+
+  // Set !CS high
+  switch (idx) {
+    case L0: PORTD |= (1<<6); break;
+    case L1: PORTD |= (1<<7); break;
+    case L2: PORTB |= (1<<4); break;
+    case R0: PORTB |= (1<<5); break;
+    case R1: PORTB |= (1<<6); break;
+    case R2: PORTC |= (1<<6); break;
+  };
+
+  return resp;
 }
-
-inline
-matrix_row_t matrix_get_row(uint8_t row)
-{
-    // Matrix mask lets you disable switches in the returned matrix data. For example, if you have a
-    // switch blocker installed and the switch is always pressed.
-#ifdef MATRIX_MASKED
-    return matrix[row] & matrix_mask[row];
-#else
-    return matrix[row];
-#endif
-}
-
-void matrix_print(void)
-{
-    print_matrix_header();
-
-    for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
-        phex(row); print(": ");
-        print_matrix_row(row);
-        print("\n");
-    }
-}
-
-uint8_t matrix_key_count(void)
-{
-    uint8_t count = 0;
-    for (uint8_t i = 0; i < MATRIX_ROWS; i++) {
-        count += matrix_bitpop(i);
-    }
-    return count;
-}
-
-
-
-#if (DIODE_DIRECTION == COL2ROW)
-
-static void init_cols(void)
-{
-    for(uint8_t x = 0; x < MATRIX_COLS; x++) {
-        setPinInputHigh(col_pins[x]);
-    }
-}
-
-static bool read_cols_on_row(matrix_row_t current_matrix[], uint8_t current_row)
-{
-    // Store last value of row prior to reading
-    matrix_row_t last_row_value = current_matrix[current_row];
-
-    // Clear data in matrix row
-    current_matrix[current_row] = 0;
-
-    // Select row and wait for row selecton to stabilize
-    select_row(current_row);
-    wait_us(30);
-
-    // For each col...
-    for(uint8_t col_index = 0; col_index < MATRIX_COLS; col_index++) {
-
-        // Select the col pin to read (active low)
-        uint8_t pin_state = readPin(col_pins[col_index]);
-
-        // Populate the matrix row with the state of the col pin
-        current_matrix[current_row] |=  pin_state ? 0 : (ROW_SHIFTER << col_index);
-    }
-
-    // Unselect row
-    unselect_row(current_row);
-
-    return (last_row_value != current_matrix[current_row]);
-}
-
-static void select_row(uint8_t row)
-{
-    setPinOutput(row_pins[row]);
-    writePinLow(row_pins[row]);
-}
-
-static void unselect_row(uint8_t row)
-{
-    setPinInputHigh(row_pins[row]);
-}
-
-static void unselect_rows(void)
-{
-    for(uint8_t x = 0; x < MATRIX_ROWS; x++) {
-        setPinInput(row_pins[x]);
-    }
-}
-
-#elif (DIODE_DIRECTION == ROW2COL)
-
-static void init_rows(void)
-{
-    for(uint8_t x = 0; x < MATRIX_ROWS; x++) {
-        setPinInputHigh(row_pins[x]);
-    }
-}
-
-static bool read_rows_on_col(matrix_row_t current_matrix[], uint8_t current_col)
-{
-    bool matrix_changed = false;
-
-    // Select col and wait for col selecton to stabilize
-    select_col(current_col);
-    wait_us(30);
-
-    // For each row...
-    for(uint8_t row_index = 0; row_index < MATRIX_ROWS; row_index++)
-    {
-
-        // Store last value of row prior to reading
-        matrix_row_t last_row_value = current_matrix[row_index];
-
-        // Check row pin state
-        if (readPin(row_pins[row_index]) == 0)
-        {
-            // Pin LO, set col bit
-            current_matrix[row_index] |= (ROW_SHIFTER << current_col);
-        }
-        else
-        {
-            // Pin HI, clear col bit
-            current_matrix[row_index] &= ~(ROW_SHIFTER << current_col);
-        }
-
-        // Determine if the matrix changed state
-        if ((last_row_value != current_matrix[row_index]) && !(matrix_changed))
-        {
-            matrix_changed = true;
-        }
-    }
-
-    // Unselect col
-    unselect_col(current_col);
-
-    return matrix_changed;
-}
-
-static void select_col(uint8_t col)
-{
-    setPinOutput(col_pins[col]);
-    writePinLow(col_pins[col]);
-}
-
-static void unselect_col(uint8_t col)
-{
-    setPinInputHigh(col_pins[col]);
-}
-
-static void unselect_cols(void)
-{
-    for(uint8_t x = 0; x < MATRIX_COLS; x++) {
-        setPinInputHigh(col_pins[x]);
-    }
-}
-
-#endif
