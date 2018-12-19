@@ -15,27 +15,35 @@
  */
 #include "ergodox_mass.h"
 
+uint32_t scanCount = 0;
+uint8_t ledCycle = 0;
+
+uint8_t LED_MASK[5] = { (1<<0), (1<<1), (1<<4), (1<<5), (1<<6) };
+
+void mass_led_on(uint8_t idx);
+void mass_led_off(uint8_t idx);
+void mass_led_toggle(uint8_t idx);
+
 void matrix_init_kb(void) {
   // Set all LEDs as outputs & initialize them to off
-  PORTF &= ~(1<<0);
-  PORTF &= ~(1<<1);
-  PORTF &= ~(1<<4);
-  PORTF &= ~(1<<5);
-  PORTF &= ~(1<<6);
-  DDRF |= (1<<0);
-  DDRF |= (1<<1);
-  DDRF |= (1<<4);
-  DDRF |= (1<<5);
-  DDRF |= (1<<6);
+  for (uint8_t i=0; i < 5; i++) {
+    DDRF |= LED_MASK[i];
+    mass_led_off(i);
+  }
 
   matrix_init_user();
 }
 
 void matrix_scan_kb(void) {
-  // put your looping keyboard code here
-  // runs every cycle (a lot)
+  ++scanCount;
 
   matrix_scan_user();
+
+  if (scanCount % 100 == 0) {
+    mass_led_toggle(ledCycle);
+    if (++ledCycle == 5)
+      ledCycle = 0;
+  }
 }
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
@@ -49,4 +57,19 @@ void led_set_kb(uint8_t usb_led) {
   // put your keyboard LED indicator (ex: Caps Lock LED) toggling code here
 
   led_set_user(usb_led);
+}
+
+void mass_led_on(uint8_t idx) {
+  if (idx >= 5) return;
+  PORTF |= LED_MASK[idx];
+}
+
+void mass_led_off(uint8_t idx) {
+  if (idx >= 5) return;
+  PORTF &= ~LED_MASK[idx];
+}
+
+void mass_led_toggle(uint8_t idx) {
+  if (idx >= 5) return;
+  PORTF ^= LED_MASK[idx];
 }
