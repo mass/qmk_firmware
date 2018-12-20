@@ -22,12 +22,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 static matrix_row_t matrix[MATRIX_ROWS];
 
 typedef enum {
-  L0,
-  L1,
-  L2,
-  R0,
-  R1,
-  R2
+  R0 = 0,
+  R1 = 1,
+  R2 = 2,
+  L0 = 3,
+  L1 = 4,
+  L2 = 5
 } GPIOChip_t;
 
 // GPIO Expander Control Bytes
@@ -141,15 +141,12 @@ void matrix_init(void) {
   spi_init();
 
   // Initialize all GPIO expanders with SPI messages (inputs, default config, pullups)
-  gpx_write_reg(R0, GPX_IODIR, 0xFFFF);
-  gpx_write_reg(R0, GPX_IOCON, 0x0000);
-  gpx_write_reg(R0, GPX_GPPU, 0xFFFF);
-  gpx_write_reg(R1, GPX_IODIR, 0xFFFF);
-  gpx_write_reg(R1, GPX_IOCON, 0x0000);
-  gpx_write_reg(R1, GPX_GPPU, 0xFFFF);
-  gpx_write_reg(R2, GPX_IODIR, 0xFFFF);
-  gpx_write_reg(R2, GPX_IOCON, 0x0000);
-  gpx_write_reg(R2, GPX_GPPU, 0xFFFF);
+  for (int i = R0; i <= L2; ++i) {
+    gpx_write_reg(i, GPX_IODIR, 0xFFFF);
+    gpx_write_reg(i, GPX_IPOL,  0xFFFF);
+    gpx_write_reg(i, GPX_IOCON, 0x0000);
+    gpx_write_reg(i, GPX_GPPU,  0xFFFF);
+  }
 
   matrix_init_quantum();
 }
@@ -158,12 +155,18 @@ void matrix_init(void) {
  * Read the matrix. Called continuously
  */
 uint8_t matrix_scan(void) {
-  matrix_scan_quantum();
+  for (int i = R0; i <= R2; ++i) { //TODO-AM: Add left chips
+    // A bank upper 8 bits, B bank lower 8 bits
+    uint16_t gpio = gpx_read_reg(i, GPX_GPIO);
 
-  uint16_t resp1 = gpx_read_reg(R0, GPX_GPIO);
-  uint16_t resp2 = gpx_read_reg(R1, GPX_GPIO);
-  uint16_t resp3 = gpx_read_reg(R2, GPX_GPIO);
-  uprintf("TEST ERGODOX MASS %u %u %u\n", resp1, resp2, resp3);
+    // Even matrix rows are bank B, odd are bank A
+    matrix[i*2] = gpio & 0xFF;
+    matrix[i*2+1] = (gpio >> 8) & 0xFF;
+
+    //uprintf("TEST ERGODOX MASS %d %u %u\n", i, matrix[i*2], matrix[i*2+1]);
+  }
+
+  matrix_scan_quantum();
 
   return 1;
 }

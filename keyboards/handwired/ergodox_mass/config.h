@@ -30,8 +30,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define DESCRIPTION     Custom ErgoDox keyboard
 
 /* key matrix size */
-#define MATRIX_ROWS 18 // 5 regular, 4 thumb cluster per side
-#define MATRIX_COLS 7
+#define MATRIX_ROWS 12 // Three GPX chips per side, two banks per chip
+#define MATRIX_COLS 8  // 8 pins per GPX bank
 
 #define UNUSED_PINS { E6, B0, B7, D0, D1, D2, D3, D5, D4, F7 }
 
