@@ -47,7 +47,7 @@ void matrix_scan_kb(void) {
 }
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
-  uprintf("RECORD %u\n", keycode);
+  //uprintf("RECORD %u\n", keycode);
   return process_record_user(keycode, record);
 }
 

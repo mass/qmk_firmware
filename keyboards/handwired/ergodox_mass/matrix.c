@@ -140,12 +140,12 @@ void matrix_init(void) {
   // Initialize SPI bus
   spi_init();
 
-  // Initialize all GPIO expanders with SPI messages (inputs, default config, pullups)
+  // Initialize all GPIO expanders with SPI messages
   for (int i = R0; i <= L2; ++i) {
-    gpx_write_reg(i, GPX_IODIR, 0xFFFF);
-    gpx_write_reg(i, GPX_IPOL,  0xFFFF);
-    gpx_write_reg(i, GPX_IOCON, 0x0000);
-    gpx_write_reg(i, GPX_GPPU,  0xFFFF);
+    gpx_write_reg(i, GPX_IODIR, 0xFFFF); // Inputs
+    gpx_write_reg(i, GPX_IPOL,  0xFFFF); // Flip polarity
+    gpx_write_reg(i, GPX_IOCON, 0x0000); // Default config
+    gpx_write_reg(i, GPX_GPPU,  0xFFFF); // Enable pullups
   }
 
   matrix_init_quantum();
@@ -155,15 +155,13 @@ void matrix_init(void) {
  * Read the matrix. Called continuously
  */
 uint8_t matrix_scan(void) {
-  for (int i = R0; i <= R2; ++i) { //TODO-AM: Add left chips
+  for (int i = R0; i <= L2; ++i) {
     // A bank upper 8 bits, B bank lower 8 bits
     uint16_t gpio = gpx_read_reg(i, GPX_GPIO);
 
     // Even matrix rows are bank B, odd are bank A
     matrix[i*2] = gpio & 0xFF;
     matrix[i*2+1] = (gpio >> 8) & 0xFF;
-
-    //uprintf("TEST ERGODOX MASS %d %u %u\n", i, matrix[i*2], matrix[i*2+1]);
   }
 
   matrix_scan_quantum();
