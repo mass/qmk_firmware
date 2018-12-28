@@ -15,14 +15,15 @@
  */
 #include "ergodox_mass.h"
 
-uint32_t scanCount = 0;
-uint8_t ledCycle = 0;
-
-uint8_t LED_MASK[5] = { (1<<0), (1<<1), (1<<4), (1<<5), (1<<6) };
-
+// Forward declarations
 void mass_led_on(uint8_t idx);
 void mass_led_off(uint8_t idx);
 void mass_led_toggle(uint8_t idx);
+
+// Pin index in PORTF for each of the LEDs
+uint8_t LED_MASK[5] = { (1<<0), (1<<1), (1<<4), (1<<5), (1<<6) };
+
+uint32_t scanCount = 0;
 
 void matrix_init_kb(void) {
   // Set all LEDs as outputs & initialize them to off
@@ -37,24 +38,34 @@ void matrix_init_kb(void) {
 void matrix_scan_kb(void) {
   ++scanCount;
 
-  matrix_scan_user();
+  //uprintf("LAYER %d\n", layer_state);
 
-  if (scanCount % 100 == 0) {
-    mass_led_toggle(ledCycle);
-    if (++ledCycle == 5)
-      ledCycle = 0;
+  // Set LEDs 0-2 based on layer state
+  mass_led_off(0);
+  mass_led_off(1);
+  mass_led_off(2);
+  switch (biton32(layer_state)) {
+    case 0:
+      mass_led_on(0);
+      break;
+    case 1:
+      mass_led_on(1);
+      break;
+    case 2:
+      mass_led_on(2);
+      break;
   }
+
+  // Blink LED4
+  if (scanCount % 1000 == 0)
+    mass_led_toggle(4);
+
+  matrix_scan_user();
 }
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
   //uprintf("RECORD %u\n", keycode);
   return process_record_user(keycode, record);
-}
-
-void led_set_kb(uint8_t usb_led) {
-  // put your keyboard LED indicator (ex: Caps Lock LED) toggling code here
-
-  led_set_user(usb_led);
 }
 
 void mass_led_on(uint8_t idx) {

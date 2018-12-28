@@ -1,6 +1,6 @@
 # ergodox_mass
 
-<!-- ![ergodox_mass](imgur.com image replace me!) -->
+<!-- ![ergodox_mass](imgur.com TODO image replace me!) -->
 
 Custom variant of the ErgoDox with rearranged keys, extra thumb cluster keys,
 and a redesigned PCB.

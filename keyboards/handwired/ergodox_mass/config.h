@@ -19,15 +19,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "config_common.h"
 
-//TODO: Mousekey
-
 /* USB Device descriptor parameter */
-#define VENDOR_ID       0xFEED
+#define VENDOR_ID       0xBEEF
 #define PRODUCT_ID      0x0000
-#define DEVICE_VER      0x0001
+#define DEVICE_VER      0x0000
 #define MANUFACTURER    mass
 #define PRODUCT         ergodox_mass
-#define DESCRIPTION     Custom ErgoDox keyboard
+#define DESCRIPTION     Custom ErgoDox Keyboard
 
 /* key matrix size */
 #define MATRIX_ROWS 12 // Three GPX chips per side, two banks per chip
@@ -37,25 +35,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define USB_MAX_POWER_CONSUMPTION 500
 
-// Key combination for magic key command
-#define IS_COMMAND() ( \
-    keyboard_report->mods == (MOD_BIT(KC_LSHIFT) | MOD_BIT(KC_RSHIFT)) \
-)
-
 /*
  * Feature disable options
  *  These options are also useful to firmware size reduction.
  */
-
-/* disable debug print */
 //#define NO_DEBUG
-
-/* disable print */
 //#define NO_PRINT
-
-/* disable action features */
 //#define NO_ACTION_LAYER
-//#define NO_ACTION_TAPPING
-//#define NO_ACTION_ONESHOT
+#define NO_ACTION_TAPPING
+#define NO_ACTION_ONESHOT
 //#define NO_ACTION_MACRO
-//#define NO_ACTION_FUNCTION
+#define NO_ACTION_FUNCTION
+
+// Mousekey Settings
+#define MOUSEKEY_DELAY             100
+#define MOUSEKEY_INTERVAL          50
+#define MOUSEKEY_MAX_SPEED         10
+#define MOUSEKEY_TIME_TO_MAX       10
+#define MOUSEKEY_WHEEL_MAX_SPEED   8
+#define MOUSEKEY_WHEEL_TIME_TO_MAX 40
