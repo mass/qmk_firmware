@@ -32,29 +32,14 @@ void matrix_init_kb(void) {
     mass_led_off(i);
   }
 
+  // Set LEDs 0-2 based on default layer state
+  mass_led_on(biton32(default_layer_state));
+
   matrix_init_user();
 }
 
 void matrix_scan_kb(void) {
   ++scanCount;
-
-  //uprintf("LAYER %d\n", layer_state);
-
-  // Set LEDs 0-2 based on layer state
-  mass_led_off(0);
-  mass_led_off(1);
-  mass_led_off(2);
-  switch (biton32(layer_state)) {
-    case 0:
-      mass_led_on(0);
-      break;
-    case 1:
-      mass_led_on(1);
-      break;
-    case 2:
-      mass_led_on(2);
-      break;
-  }
 
   // Blink LED4
   if (scanCount % 1000 == 0)
@@ -66,6 +51,17 @@ void matrix_scan_kb(void) {
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
   //uprintf("RECORD %u\n", keycode);
   return process_record_user(keycode, record);
+}
+
+uint32_t layer_state_set_kb(uint32_t state) {
+  //uprintf("LAYER %d\n", state);
+
+  // Set LEDs 0-2 based on layer state
+  for (uint8_t i=0; i < 3; i++)
+    mass_led_off(i);
+  mass_led_on(biton32(state));
+
+  return state;
 }
 
 void mass_led_on(uint8_t idx) {
