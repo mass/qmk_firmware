@@ -15,54 +15,16 @@
  */
 #include "ergodox_mass.h"
 
-// Forward declarations
-void mass_led_on(uint8_t idx);
-void mass_led_off(uint8_t idx);
-void mass_led_toggle(uint8_t idx);
+#include "quantum.h"
 
 // Pin index in PORTF for each of the LEDs
 uint8_t LED_MASK[5] = { (1<<0), (1<<1), (1<<4), (1<<5), (1<<6) };
 
 uint32_t scanCount = 0;
 
-void matrix_init_kb(void) {
-  // Set all LEDs as outputs & initialize them to off
-  for (uint8_t i=0; i < 5; i++) {
-    DDRF |= LED_MASK[i];
-    mass_led_off(i);
-  }
-
-  // Set LEDs 0-2 based on default layer state
-  mass_led_on(biton32(default_layer_state));
-
-  matrix_init_user();
-}
-
-void matrix_scan_kb(void) {
-  ++scanCount;
-
-  // Blink LED4
-  if (scanCount % 1000 == 0)
-    mass_led_toggle(4);
-
-  matrix_scan_user();
-}
-
-bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
-  //uprintf("RECORD %u\n", keycode);
-  return process_record_user(keycode, record);
-}
-
-uint32_t layer_state_set_kb(uint32_t state) {
-  //uprintf("LAYER %d\n", state);
-
-  // Set LEDs 0-2 based on layer state
-  for (uint8_t i=0; i < 3; i++)
-    mass_led_off(i);
-  mass_led_on(biton32(state));
-
-  return state;
-}
+/**
+ * Custom LED functions
+ */
 
 void mass_led_on(uint8_t idx) {
   if (idx >= 5) return;
@@ -77,4 +39,49 @@ void mass_led_off(uint8_t idx) {
 void mass_led_toggle(uint8_t idx) {
   if (idx >= 5) return;
   PORTF ^= LED_MASK[idx];
+}
+
+/**
+ * QMK keyboard callback functions
+ */
+
+uint32_t layer_state_set_kb(uint32_t state) {
+  //uprintf("LAYER %d\n", state);
+
+  // Set layer LEDs based on new layer state
+  for (uint8_t i = 0; i <= 2; ++i)
+    mass_led_off(i);
+  uint8_t bit = biton32(state);
+  if (bit <= 2)
+    mass_led_on(bit);
+
+  return state;
+}
+
+bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
+  //uprintf("RECORD %u\n", keycode);
+  return process_record_user(keycode, record);
+}
+
+void matrix_init_kb(void) {
+  // Set all LEDs as outputs & initialize them to off
+  for (uint8_t i = 0; i <= 4; ++i) {
+    DDRF |= LED_MASK[i];
+    mass_led_off(i);
+  }
+
+  // Set layer LEDs based on default layer state
+  layer_state_set_kb(default_layer_state);
+
+  matrix_init_user();
+}
+
+void matrix_scan_kb(void) {
+  ++scanCount;
+
+  // Blink LED4
+  if (scanCount % 1000 == 0)
+    mass_led_toggle(4);
+
+  matrix_scan_user();
 }

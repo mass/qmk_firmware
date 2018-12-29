@@ -133,10 +133,9 @@ void matrix_power_down(void) {
  * Initialize the matrix reading circuitry. Called once at the start
  */
 void matrix_init(void) {
-  // initialize matrix state: all keys off
-  for (uint8_t i=0; i < MATRIX_ROWS; i++) {
+  // Initialize all switches to off
+  for (uint8_t i = 0; i < MATRIX_ROWS; ++i)
     matrix[i] = 0;
-  }
 
   // Initialize SPI bus
   spi_init();

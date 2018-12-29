@@ -2,8 +2,8 @@
 
 <!-- ![ergodox_mass](imgur.com TODO image replace me!) -->
 
-Custom variant of the ErgoDox with rearranged keys, extra thumb cluster keys,
-and a redesigned PCB.
+Custom variant of the ErgoDox with some rearranged keys, extra thumb cluster
+keys, and a redesigned PCB.
 
 Keyboard Maintainer: [mass](https://github.com/mass)
 Hardware Supported: Custom PCB, ATMEGA32U4
