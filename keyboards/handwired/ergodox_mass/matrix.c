@@ -15,6 +15,8 @@
  */
 #include "matrix.h"
 
+#include "debounce.h"
+
 typedef enum {
   R0 = 0,
   R1 = 1,
@@ -49,8 +51,9 @@ void gpx_write_reg(GPIOChip_t idx, uint8_t addr, uint16_t val);
 #define GPX_GPIO    0x12
 #define GPX_OLAT    0x14
 
-// Store switch state
-static matrix_row_t matrix[MATRIX_ROWS];
+// Store raw and debounced switch state
+static matrix_row_t raw_matrix[MATRIX_ROWS];
+static matrix_row_t deb_matrix[MATRIX_ROWS];
 
 /**
  * Define weak empty shells for these functions in case they don't get defined elsewhere
@@ -109,12 +112,12 @@ bool matrix_is_modified(void) {
 
 inline
 bool matrix_is_on(uint8_t row, uint8_t col) {
-  return (matrix[row] & ((matrix_row_t)1<col));
+  return (deb_matrix[row] & ((matrix_row_t)1<col));
 }
 
 inline
 matrix_row_t matrix_get_row(uint8_t row) {
-  return matrix[row];
+  return deb_matrix[row];
 }
 
 inline
@@ -134,8 +137,12 @@ void matrix_power_down(void) {
  */
 void matrix_init(void) {
   // Initialize all switches to off
-  for (uint8_t i = 0; i < MATRIX_ROWS; ++i)
-    matrix[i] = 0;
+  for (uint8_t i = 0; i < MATRIX_ROWS; ++i) {
+    raw_matrix[i] = 0;
+    deb_matrix[i] = 0;
+  }
+
+  debounce_init(MATRIX_ROWS);
 
   // Initialize SPI bus
   spi_init();
@@ -160,9 +167,11 @@ uint8_t matrix_scan(void) {
     uint16_t gpio = gpx_read_reg(i, GPX_GPIO);
 
     // Even matrix rows are bank B, odd are bank A
-    matrix[i*2] = gpio & 0xFF;
-    matrix[i*2+1] = (gpio >> 8) & 0xFF;
+    raw_matrix[i*2] = gpio & 0xFF;
+    raw_matrix[i*2+1] = (gpio >> 8) & 0xFF;
   }
+
+  debounce(raw_matrix, deb_matrix, MATRIX_ROWS, true);
 
   matrix_scan_quantum();
 
