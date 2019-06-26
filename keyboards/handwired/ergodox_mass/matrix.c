@@ -29,14 +29,9 @@ typedef enum {
 // Forward declarations
 void spi_init(void);
 uint8_t spi_send(uint8_t byte);
-void spi_start(GPIOChip_t idx);
-void spi_end(GPIOChip_t idx);
+uint8_t gpx_control_byte(GPIOChip_t idx, uint8_t read);
 uint16_t gpx_read_reg(GPIOChip_t idx, uint8_t addr);
 void gpx_write_reg(GPIOChip_t idx, uint8_t addr, uint16_t val);
-
-// GPIO Expander Control Bytes
-#define GPX_READ  0b01000001
-#define GPX_WRITE 0b01000000
 
 // GPIO Expander Register Addresses
 #define GPX_IODIR   0x00
@@ -147,13 +142,13 @@ void matrix_init(void) {
   // Initialize SPI bus
   spi_init();
 
-  // Initialize all GPIO expanders with SPI messages
-  for (int i = R0; i <= L2; ++i) {
-    gpx_write_reg(i, GPX_IODIR, 0xFFFF); // Inputs
-    gpx_write_reg(i, GPX_IPOL,  0xFFFF); // Flip polarity
-    gpx_write_reg(i, GPX_IOCON, 0x0000); // Default config
-    gpx_write_reg(i, GPX_GPPU,  0xFFFF); // Enable pullups
-  }
+  // Initialize all GPIO expanders. Each SPI message will act on all the chips,
+  // until hardware addressing is turned on. Then, only the chip that is addressed
+  // in the first control byte will respond to commands.
+  gpx_write_reg(-1, GPX_IODIR, 0xFFFF); // Inputs
+  gpx_write_reg(-1, GPX_IPOL,  0xFFFF); // Flip polarity
+  gpx_write_reg(-1, GPX_GPPU,  0xFFFF); // Enable pullups
+  gpx_write_reg(-1, GPX_IOCON, 0x0808); // Defaults, but enable hardware addressing
 
   matrix_init_quantum();
 }
@@ -182,25 +177,12 @@ uint8_t matrix_scan(void) {
  * Initialize the SPI bus
  */
 void spi_init(void) {
-  // Initialize !CS pins to inactive outputs (high)
-  DDRD |= (1<<6); // !CS_L0
-  DDRD |= (1<<7); // !CS_L1
-  DDRB |= (1<<4); // !CS_L2
-  DDRB |= (1<<5); // !CS_R0
-  DDRB |= (1<<6); // !CS_R1
-  DDRC |= (1<<6); // !CS_R2
-  PORTD |= (1<<6); // !CS_L0
-  PORTD |= (1<<7); // !CS_L1
-  PORTB |= (1<<4); // !CS_L2
-  PORTB |= (1<<5); // !CS_R0
-  PORTB |= (1<<6); // !CS_R1
-  PORTC |= (1<<6); // !CS_R2
-
   // Disable power saving
   PRR0 &= ~(1<<2); // PRSPI
 
   // Initialize SPI pins
   DDRB |= (1<<0); // SS
+  PORTB |= (1<<0); // SS
   DDRB |= (1<<1); // SCK
   DDRB |= (1<<2); // SDO
   DDRB &= ~(1<<3); // SDI
@@ -234,54 +216,45 @@ uint8_t spi_send(uint8_t byte) {
   return resp;
 }
 
-void spi_start(GPIOChip_t idx) {
-  // Set !CS low
-  switch (idx) {
-    case L0: PORTD &= ~(1<<6); break;
-    case L1: PORTD &= ~(1<<7); break;
-    case L2: PORTB &= ~(1<<4); break;
-    case R0: PORTB &= ~(1<<5); break;
-    case R1: PORTB &= ~(1<<6); break;
-    case R2: PORTC &= ~(1<<6); break;
-  };
-}
-
-void spi_end(GPIOChip_t idx) {
-  // Set !CS high
-  switch (idx) {
-    case L0: PORTD |= (1<<6); break;
-    case L1: PORTD |= (1<<7); break;
-    case L2: PORTB |= (1<<4); break;
-    case R0: PORTB |= (1<<5); break;
-    case R1: PORTB |= (1<<6); break;
-    case R2: PORTC |= (1<<6); break;
-  };
-}
-
 /**
  * GPIO expander fucntions
  */
 
-uint16_t gpx_read_reg(GPIOChip_t idx, uint8_t addr) {
-  spi_start(idx);
+uint8_t gpx_control_byte(GPIOChip_t idx, uint8_t read) {
+  uint8_t control = 0b01000000;
+  switch (idx) {
+    case R0: control |= 0b0010; break;
+    case R1: control |= 0b0100; break;
+    case R2: control |= 0b0110; break;
+    case L0: control |= 0b1000; break;
+    case L1: control |= 0b1010; break;
+    case L2: control |= 0b1100; break;
+  }
+  if (read)
+    control |= 0b1;
+  return control;
+}
 
-  spi_send(GPX_READ);
+uint16_t gpx_read_reg(GPIOChip_t idx, uint8_t addr) {
+  PORTB &= ~(1<<0);
+
+  spi_send(gpx_control_byte(idx, 1));
   spi_send(addr);
   uint8_t resp1 = spi_send(0x00);
   uint8_t resp2 = spi_send(0x00);
 
-  spi_end(idx);
+  PORTB |= (1<<0);
 
   return resp1 << 8 | resp2;
 }
 
 void gpx_write_reg(GPIOChip_t idx, uint8_t addr, uint16_t val) {
-  spi_start(idx);
+  PORTB &= ~(1<<0);
 
-  spi_send(GPX_WRITE);
+  spi_send(gpx_control_byte(idx, 0));
   spi_send(addr);
   spi_send((val >> 8) & 0xFF);
   spi_send(val & 0xFF);
 
-  spi_end(idx);
+  PORTB |= (1<<0);
 }
