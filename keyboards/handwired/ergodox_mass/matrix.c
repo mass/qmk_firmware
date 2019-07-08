@@ -142,13 +142,13 @@ void matrix_init(void) {
   // Initialize SPI bus
   spi_init();
 
-  // Initialize all GPIO expanders. Each SPI message will act on all the chips,
-  // until hardware addressing is turned on. Then, only the chip that is addressed
-  // in the first control byte will respond to commands.
-  gpx_write_reg(-1, GPX_IODIR, 0xFFFF); // Inputs
-  gpx_write_reg(-1, GPX_IPOL,  0xFFFF); // Flip polarity
-  gpx_write_reg(-1, GPX_GPPU,  0xFFFF); // Enable pullups
-  gpx_write_reg(-1, GPX_IOCON, 0x0808); // Defaults, but enable hardware addressing
+  // Initialize all GPIO expanders
+  for (int i = R0; i <= L2; ++i) {
+    gpx_write_reg(i, GPX_IODIR, 0xFFFF); // Inputs
+    gpx_write_reg(i, GPX_IPOL,  0xFFFF); // Flip polarity
+    gpx_write_reg(i, GPX_GPPU,  0xFFFF); // Enable pullups
+    gpx_write_reg(i, GPX_IOCON, 0x0808); // Defaults, but enable hardware addressing
+  }
 
   matrix_init_quantum();
 }
