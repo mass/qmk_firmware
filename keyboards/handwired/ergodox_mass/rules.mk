@@ -79,6 +79,7 @@ FAUXCLICKY_ENABLE = no      # Use buzzer to emulate clicky switches
 HD44780_ENABLE = no         # Enable support for HD44780 based LCDs (+400)
 CUSTOM_MATRIX = yes         # Custom matrix file
 DEBOUNCE_TYPE = eager_pk    # Enable per-key debouncing with immediate response
+SWAP_HANDS_ENABLE = yes     # Swap left/right hands on keypress
 
 # Extra source files
 SRC += matrix.c

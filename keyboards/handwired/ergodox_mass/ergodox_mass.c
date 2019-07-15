@@ -59,6 +59,11 @@ uint32_t layer_state_set_kb(uint32_t state) {
 }
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
+  if (record->event.pressed)
+    mass_led_on(3);
+  else
+    mass_led_off(3);
+
   //uprintf("RECORD %u\n", keycode);
   return process_record_user(keycode, record);
 }
