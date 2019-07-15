@@ -26,13 +26,6 @@
  * - ^LAYER^: Toggle
  */
 
-/**
- * TODO
- *
- * - More symbol layer keys
- * - Use extra thumb cluster keys
- */
-
 // Layers
 #define BASE 0
 #define SYMB 1
@@ -40,7 +33,7 @@
 
 // Defines the keycodes used by our macros in process_record_user
 enum custom_keycodes {
-   CUSTOM = SAFE_RANGE,
+   NUMHOLD = SAFE_RANGE,
 };
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
@@ -65,7 +58,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  *                                 | Space| Back |------|       |------| Cntl |Enter |
  *                                 |      |      | End  |       |  Tab |      |      |
  *                          ,------+------+-------------|       |--------------------+------.
- *                          |             |     Meh     |       |     Meh     |             |
+ *                          |             |   Numhold   |       |   Numhold   |             |
  *                          `---------------------------'       `---------------------------'
  */
 [BASE] = LAYOUT (
@@ -78,7 +71,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                                                  KC_DELT,KC_NO,
                                                          KC_HOME,
                                         KC_SPC,  KC_BSPC,KC_END,
-                                        KC_NO,           MEH_T(KC_NO),
+                                        KC_NO,           NUMHOLD,
 
  KC_NO,       KC_6,   KC_7,    KC_8,    KC_9,   KC_0,             KC_MINS,
  TG(NAVG),    KC_Y,   KC_U,    KC_I,    KC_O,   KC_P,             KC_BSLS,
@@ -89,7 +82,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  KC_LGUI,        KC_ESC,
  KC_NO,
  KC_TAB,KC_RCTL, KC_ENT,
- MEH_T(KC_NO),   KC_NO
+ NUMHOLD,        KC_NO
 ),
 
 /* Keymap 1: Symbol Layer
@@ -112,7 +105,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  *                                 | Space| Back |------|       |------| Cntl |Enter |
  *                                 |      |      | End  |       |  Tab |      |      |
  *                          ,------+------+-------------|       |--------------------+------.
- *                          |             |     Meh     |       |     Meh     |             |
+ *                          |             |   Numhold   |       |   Numhold   |             |
  *                          `---------------------------'       `---------------------------'
  */
 
@@ -160,7 +153,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
  *                                 | Space| Back |------|       |------| Cntl |Enter |
  *                                 |      |      | End  |       |  Tab |      |      |
  *                          ,------+------+-------------|       |--------------------+------.
- *                          |             |     Meh     |       |     Meh     |             |
+ *                          |             |   Numhold   |       |   Numhold   |             |
  *                          `---------------------------'       `---------------------------'
  */
 
@@ -190,7 +183,23 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 };
 
+void matrix_init_user(void) {
+  // Ensure NUMLOCK is OFF at startup
+  if (host_keyboard_leds() & (1<<USB_LED_NUM_LOCK)) {
+    register_code(KC_NUMLOCK);
+    unregister_code(KC_NUMLOCK);
+  }
+}
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+  switch (keycode) {
+    case NUMHOLD:
+      // This function is called twice per keystroke, pressed & released. Turn
+      // on NUMLOCK on press, then turn it off on release.
+      register_code(KC_NUMLOCK);
+      unregister_code(KC_NUMLOCK);
+      return false; // Skip all further processing
+  }
   return true;
 }
 
@@ -214,7 +223,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
  *                                 | Space| Back |------|       |------| Cntl |Enter |
  *                                 |      |      | End  |       |  Tab |      |      |
  *                          ,------+------+-------------|       |--------------------+------.
- *                          |             |     Meh     |       |     Meh     |             |
+ *                          |             |   Numhold   |       |   Numhold   |             |
  *                          `---------------------------'       `---------------------------'
  */
 
