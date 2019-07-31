@@ -1,13 +1,13 @@
 # ergodox_mass
 
-![ergodox_mass](https://i.redd.it/xat76klmp9721.jpg)
+![ergodox_mass](https://i.imgur.com/s6H9pae.jpg)
 
 Custom variant of the ErgoDox with some rearranged keys, extra thumb cluster
 keys, and a redesigned PCB.
 
-Keyboard Maintainer: [mass](https://github.com/mass)
-Hardware Supported: Custom PCB, ATMEGA32U4
-Hardware Availability: Contact Me
+- Keyboard Maintainer: [mass](https://github.com/mass)
+- Hardware Supported: Custom PCB, ATMEGA32U4
+- Hardware Availability: Contact Me
 
 Make example for this keyboard (after setting up your build environment):
 
